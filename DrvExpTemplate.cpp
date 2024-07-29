@@ -589,13 +589,6 @@ int main()
 	DWORD bytesRet = 0;
 
 
-	PVOID baseAddress =(PVOID)0x4800000;
-	PVOID stack = (char*)VirtualAlloc(
-		baseAddress,
-		SIZE_BUF,
-		MEM_COMMIT | MEM_RESERVE,
-		PAGE_EXECUTE_READWRITE);
-
 	g_device = CreateFileA(
 		"\\\\.\\AtiDCM",
 		GENERIC_READ | GENERIC_WRITE,
