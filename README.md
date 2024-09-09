@@ -1,11 +1,13 @@
+# ATDCM64a.sys LPE POC
+
 Exploit for atdcm64a.sys vulnerable driver. The vulnerable driver can be downloaded from this link https://drivers.amd.com/drivers/beta/win10-64bit-radeon-software-adrenalin-edition-18.12.1.1-dec5.exe.
 All info are in the blog post here: 
 
-# Compile
+## Compile
 
 Compile with Visual Studio using `Release` `x64`. Exploit will be located at `.\x64\Release\DrvExpTemplate.exe`. Ignore error of type `Exit from command copy <path> x:\temp\`. This command was executed in order to deploy automatically to the compiled exploit on the target machine, therefore you can ignore the error. 
 
-# Run
+## Run
 
 ```
 PS > whoami /priv
@@ -86,3 +88,6 @@ SeDelegateSessionUserImpersonatePrivilege Obtain an impersonation token for anot
 
 >
 ```
+## References
+
+* https://ommadawn46.medium.com/windows-kernel-exploitation-hevd-on-windows-10-22h2-b407c6f5b8f7
