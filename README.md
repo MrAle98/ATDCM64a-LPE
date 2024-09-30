@@ -1,7 +1,12 @@
 # ATDCM64a.sys LPE POC
 
 Exploit for atdcm64a.sys vulnerable driver. The vulnerable driver can be downloaded from this link https://drivers.amd.com/drivers/beta/win10-64bit-radeon-software-adrenalin-edition-18.12.1.1-dec5.exe.
-All info are in the blog post here: 
+If not possible follow this procedure:
+1. Navigate to this [link](https://www.amd.com/en/support/downloads/previous-drivers.html/graphics/radeon-600-500-400/radeon-rx-500-series/radeon-rx-580.html)
+2. Expand the “Windows 10 – 64-bit Edition” tab
+3. Download the package Adrenalin Edition 18.12.1.1 Optional (Release date: 2018-12-05)
+   
+All info are in the blog series [here](https://security.humanativaspa.it/tag/atdcm64a/).
 
 ## Compile
 
