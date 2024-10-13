@@ -10,7 +10,7 @@ All info are in the blog series [here](https://security.humanativaspa.it/tag/atd
 
 ## Compile
 
-Compile with Visual Studio using `Release` `x64`. Exploit will be located at `.\x64\Release\DrvExpTemplate.exe`. Ignore error of type `Exit from command copy <path> x:\temp\`. This command was executed in order to deploy automatically to the compiled exploit on the target machine, therefore you can ignore the error. 
+Compile with Visual Studio using `Release` `x64`. Exploit will be located at `.\x64\Release\DrvExpTemplate.exe`. Ignore error of type `Exit from command copy <path> x:\temp\`. This command was executed in order to deploy automatically the compiled exploit on the target machine, therefore you can ignore the error. 
 
 ## Run
 
