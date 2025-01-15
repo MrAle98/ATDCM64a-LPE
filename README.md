@@ -99,3 +99,4 @@ SeDelegateSessionUserImpersonatePrivilege Obtain an impersonation token for anot
 * https://windows-internals.com/one-i-o-ring-to-rule-them-all-a-full-read-write-exploit-primitive-on-windows-11/
 * https://knifecoat.com/Posts/Arbitrary+Kernel+RW+using+IORING's
 * https://www.crowdfense.com/windows-applocker-driver-lpe-vulnerability-cve-2024-21338/
+* https://connormcgarr.github.io/hvci/
